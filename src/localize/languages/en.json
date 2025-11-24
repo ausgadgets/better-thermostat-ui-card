@@ -1,7 +1,9 @@
 {
   "common": {
     "version": "version",
-    "current": "current"
+    "current": "current",
+    "target_temperature": "Target temperature",
+    "current_temperature": "Current temperature"
   },
   "editor": {
     "card": {
@@ -14,6 +16,8 @@
         "disable_menu": "Disable menu",
         "disable_battery_warning": "Turn off the battery warning",
         "disable_buttons": "Turn off the plus/minus buttons",
+        "disable_valve": "Turn off the AC valve indicator",
+        "valve_entity_id": "Air conditioning valve entity",
         "eco_temperature": "Target temp for night/away/eco mode triggerd by ui button",
         "set_current_as_main": "Swap target with current temperature places"
       }
@@ -24,6 +28,8 @@
     "night_mode": "Night mode",
     "eco": "Eco",
     "summer": "Summer",
+    "valve_open": "AC valve open",
+    "valve_closed": "AC valve closed",
     "cooling": "Cooling",
     "heating": "Heating",
     "cooling_off": "Cooling off",

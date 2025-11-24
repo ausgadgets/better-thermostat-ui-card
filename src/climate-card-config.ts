@@ -38,6 +38,8 @@ export type ClimateCardConfig = LovelaceCardConfig &
         set_current_as_main?: boolean;
         eco_temperature?: number;
         disable_buttons?: boolean;
+        disable_valve?: boolean;
+        valve_entity_id?: string;
     };
 
 export const climateCardConfigStruct = assign(
@@ -53,6 +55,8 @@ export const climateCardConfigStruct = assign(
         set_current_as_main: optional(boolean()),
         eco_temperature: optional(number()),
         disable_menu: optional(boolean()),
-        disable_buttons: optional(boolean())
+        disable_buttons: optional(boolean()),
+        disable_valve: optional(boolean()),
+        valve_entity_id: optional(string())
     })
 );

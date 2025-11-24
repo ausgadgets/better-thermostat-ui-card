@@ -149,6 +149,7 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
   @property({ type: Number }) public step = 1;
   @property({ type: Boolean }) public window: boolean = false;
   @property({ type: Boolean }) public summer: boolean = false;
+  @property({ type: Boolean }) public valve: boolean = false;
   @property({ type: String }) public status: string = "loading";
   @property({ type: String }) public mode: string = "off";
   @property({ type: Boolean, reflect: true }) public dragging = false;
@@ -239,10 +240,12 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
   private _ignore: Boolean = false;
   private _hasWindow: Boolean = false;
   private _hasSummer: Boolean = false;
+  private _hasValve: Boolean = false;
   private _timeout: any;
   private _oldValueMin: number = 0;
   private _oldValueMax: number = 0;
   private stateObj: ClimateEntity | undefined;
+  private valveObj: ClimateEntity | undefined;
   private _display_bottom: number = 0;
   private _display_top: number = 0;
   private modes: any = [];
@@ -440,7 +443,7 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
         --mode-color: var(--state-climate-auto-color);
       }
       .cool {
-        --mode-color: var(--label-badge-red);
+        --mode-color: var(--label-badge-blue);
       }
       .heat, .heat_cool {
         --mode-color: var(--label-badge-red);
@@ -536,8 +539,8 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
       }
 
       .status.cooler.active {
-        fill: #03A9F4;
-        filter: drop-shadow(0px 0px 6px #03A9F4);
+        fill: #2196F3;
+        filter: drop-shadow(0px 0px 6px #2196F3);
       }
 
       #bar {
@@ -563,7 +566,7 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
       .eco ha-icon-button[title="heat"], .window_open ha-icon-button[title="heat"], .summer ha-icon-button[title="heat"] {
         --mode-color: var(--disabled-text-color);
       }
-      .summer,.window {
+      .summer,.window,.valve {
         transition: fill 0.3s ease;
         fill: var(--disabled-text-color);
       }
@@ -575,6 +578,10 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
       }
       .window.active {
         fill: #80a7c4;
+      }
+      .valve.active {
+        fill: #2196F3;
+      }
       }
       ha-icon-button[title="eco"] {
         --mode-color: var(--energy-non-fossil-color) !important;
@@ -609,6 +616,7 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
       if (changedProps.get("_config") !== undefined) {
         this._hasSummer = false;
         this._hasWindow = false;
+        this._hasValve = false;
         this.current_humidity = 0;
       }
     }
@@ -683,6 +691,16 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
       if (attributes?.call_for_heat !== undefined) {
         this._hasSummer = true;
         this.summer = !attributes.call_for_heat
+      }
+      // Handle valve entity
+      if (this._config.valve_entity_id) {
+        const valveStateObj = this.hass.states[this._config.valve_entity_id] as ClimateEntity;
+        if (valveStateObj) {
+          this._hasValve = true;
+          this.valveObj = valveStateObj;
+          // Valve is considered "open" when the climate entity is not off
+          this.valve = valveStateObj.state !== 'off';
+        }
       }
       if (attributes?.batteries !== undefined && !this?._config?.disable_battery_warning) {
         const showLowBatteryWarningWhenPercentageLowerThan = 5; // this is really preference based - an option would be neat 
@@ -810,13 +828,45 @@ export class BetterThermostatUi extends LitElement implements LovelaceCard {
 
   public render: () => TemplateResult = (): TemplateResult => {
     const windowLabel = this.window ? localize({ hass: this.hass, string: `extra_states.window_open` }) : localize({ hass: this.hass, string: `extra_states.window_closed` });
+    const valveLabel = this.valve ? localize({ hass: this.hass, string: `extra_states.valve_open` }) : localize({ hass: this.hass, string: `extra_states.valve_closed` });
+    
+    // Calculate icon positions based on how many are visible
+    const hasWindow = this._hasWindow && !this._config?.disable_window;
+    const hasSummer = this._hasSummer && !this._config?.disable_summer;
+    const hasValve = this._hasValve && !this._config?.disable_valve;
+    const visibleIcons = [hasWindow, hasSummer, hasValve].filter(Boolean).length;
+    
+    let windowTransform = '';
+    let summerTransform = '';
+    let valveTransform = '';
+    
+    if (visibleIcons === 3) {
+      windowTransform = 'translate(-31.25,0)';
+      summerTransform = 'translate(0,0)';
+      valveTransform = 'translate(31.25,0)';
+    } else if (visibleIcons === 2) {
+      if (hasWindow && hasSummer) {
+        windowTransform = 'translate(-31.25,0)';
+        summerTransform = 'translate(31.25,0)';
+      } else if (hasWindow && hasValve) {
+        windowTransform = 'translate(-31.25,0)';
+        valveTransform = 'translate(31.25,0)';
+      } else if (hasSummer && hasValve) {
+        summerTransform = 'translate(-31.25,0)';
+        valveTransform = 'translate(31.25,0)';
+      }
+    }
+    
     const upperContentIcons = svg`
       <g transform="translate(57.5,37) scale(0.35)">
-      ${(this._hasWindow && !this._config?.disable_window) ? svg`
-        <path title="${windowLabel}" class="window ${this.window ? 'active' : ''}" fill="none" transform="${(this._hasSummer && !this._config?.disable_summer) ? 'translate(-31.25,0)' : ''}" id="window" d=${mdiWindowOpenVariant}><title>${windowLabel}</title></path>
+      ${hasWindow ? svg`
+        <path title="${windowLabel}" class="window ${this.window ? 'active' : ''}" fill="none" transform="${windowTransform}" id="window" d=${mdiWindowOpenVariant}><title>${windowLabel}</title></path>
       `: ``}
-      ${(this._hasSummer && !this._config?.disable_summer) ? svg`
-        <path class="summer ${this.summer ? 'active' : ''}" fill="none" transform="${(this._hasWindow && !this._config?.disable_window) ? 'translate(31.25,0)' : ''}" id="summer" d=${mdiSunThermometer}><title>${localize({ hass: this.hass, string: `extra_states.summer` })}</title></path>
+      ${hasSummer ? svg`
+        <path class="summer ${this.summer ? 'active' : ''}" fill="none" transform="${summerTransform}" id="summer" d=${mdiSunThermometer}><title>${localize({ hass: this.hass, string: `extra_states.summer` })}</title></path>
+      `: ``}
+      ${hasValve ? svg`
+        <path class="valve ${this.valve ? 'active' : ''}" fill="none" transform="${valveTransform}" id="valve" d=${mdiAirConditioner}><title>${valveLabel}</title></path>
       `: ``}
      </g>`;
 
